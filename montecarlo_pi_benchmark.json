@@ -1,0 +1,37 @@
+[
+    {
+        "NumPoints": 10000000,
+        "Pi_MultiThread": 3.1414344,
+        "Pi_SingleThread": 3.1417224,
+        "Time_SingleThread_ms": 386,
+        "Time_MultiThread_ms": 97
+    },
+    {
+        "NumPoints": 20000000,
+        "Pi_MultiThread": 3.1417486,
+        "Pi_SingleThread": 3.141757,
+        "Time_SingleThread_ms": 747,
+        "Time_MultiThread_ms": 115
+    },
+    {
+        "NumPoints": 30000000,
+        "Pi_MultiThread": 3.1415106666666666,
+        "Pi_SingleThread": 3.141959066666667,
+        "Time_SingleThread_ms": 1080,
+        "Time_MultiThread_ms": 190
+    },
+    {
+        "NumPoints": 40000000,
+        "Pi_MultiThread": 3.141434,
+        "Pi_SingleThread": 3.1411325,
+        "Time_SingleThread_ms": 1438,
+        "Time_MultiThread_ms": 223
+    },
+    {
+        "NumPoints": 50000000,
+        "Pi_MultiThread": 3.141548,
+        "Pi_SingleThread": 3.1421072,
+        "Time_SingleThread_ms": 1799,
+        "Time_MultiThread_ms": 279
+    }
+]
