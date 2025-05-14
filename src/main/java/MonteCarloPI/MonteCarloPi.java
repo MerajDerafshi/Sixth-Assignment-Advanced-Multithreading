@@ -1,55 +1,115 @@
 package MonteCarloPI;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class MonteCarloPi {
 
-    static final long NUM_POINTS = 50_000_000L;
     static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
-    public static void main(String[] args) throws InterruptedException, ExecutionException
-    {
-        // Without Threads
-        System.out.println("Single threaded calculation started: ");
-        long startTime = System.nanoTime();
-        double piWithoutThreads = estimatePiWithoutThreads(NUM_POINTS);
-        long endTime = System.nanoTime();
-        System.out.println("Monte Carlo Pi Approximation (single thread): " + piWithoutThreads);
-        System.out.println("Time taken (single threads): " + (endTime - startTime) / 1_000_000 + " ms");
+    static final long[] POINT_COUNTS = {10_000_000L, 20_000_000L, 30_000_000L, 40_000_000L, 50_000_000L};
 
-        // With Threads
-        System.out.printf("Multi threaded calculation started: (your device has %d logical threads)\n",NUM_THREADS);
-        startTime = System.nanoTime();
-        double piWithThreads = estimatePiWithThreads(NUM_POINTS, NUM_THREADS);
-        endTime = System.nanoTime();
-        System.out.println("Monte Carlo Pi Approximation (Multi-threaded): " + piWithThreads);
-        System.out.println("Time taken (Multi-threaded): " + (endTime - startTime) / 1_000_000 + " ms");
+    public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
+        List<String[]> csvResults = new ArrayList<>();
+        csvResults.add(new String[]{"NumPoints", "Pi_SingleThread", "Time_SingleThread(ms)", "Pi_MultiThread", "Time_MultiThread(ms)"});
 
-        // TODO: After completing the implementation, reflect on the questions in the description of this task in the README file
-        //       and include your answers in your report file.
+        JSONArray jsonArray = new JSONArray();
+
+        for (long numPoints : POINT_COUNTS) {
+            System.out.printf("\n===== Running with %,d points =====\n", numPoints);
+
+            // Single-threaded
+            long start = System.nanoTime();
+            double pi1 = estimatePiWithoutThreads(numPoints);
+            long time1 = (System.nanoTime() - start) / 1_000_000;
+
+            // Multi-threaded
+            start = System.nanoTime();
+            double pi2 = estimatePiWithThreads(numPoints, NUM_THREADS);
+            long time2 = (System.nanoTime() - start) / 1_000_000;
+
+            // Add to CSV
+            csvResults.add(new String[]{
+                    String.valueOf(numPoints),
+                    String.format("%.6f", pi1),
+                    String.valueOf(time1),
+                    String.format("%.6f", pi2),
+                    String.valueOf(time2)
+            });
+
+            // Add to JSON
+            JSONObject record = new JSONObject();
+            record.put("NumPoints", numPoints);
+            record.put("Pi_SingleThread", pi1);
+            record.put("Time_SingleThread_ms", time1);
+            record.put("Pi_MultiThread", pi2);
+            record.put("Time_MultiThread_ms", time2);
+            jsonArray.put(record);
+        }
+
+        // Export CSV
+        try (FileWriter writer = new FileWriter("montecarlo_pi_benchmark.csv")) {
+            for (String[] row : csvResults) {
+                writer.write(String.join(",", row));
+                writer.write("\n");
+            }
+            System.out.println("\n✅ CSV exported to: montecarlo_pi_benchmark.csv");
+        }
+
+        // Export JSON
+        try (FileWriter jsonWriter = new FileWriter("montecarlo_pi_benchmark.json")) {
+            jsonWriter.write(jsonArray.toString(4)); // pretty print
+            System.out.println("✅ JSON exported to: montecarlo_pi_benchmark.json");
+        }
     }
 
-    // Monte Carlo Pi Approximation without threads
-    public static double estimatePiWithoutThreads(long numPoints)
-    {
-        // TODO: Implement this method to calculate Pi using a single thread
-        return 0;
+    public static double estimatePiWithoutThreads(long numPoints) {
+        Random random = new Random();
+        long insideCircle = 0;
+
+        for (long i = 0; i < numPoints; i++) {
+            double x = 2 * random.nextDouble() - 1;
+            double y = 2 * random.nextDouble() - 1;
+            if (x * x + y * y <= 1) {
+                insideCircle++;
+            }
+        }
+
+        return 4.0 * insideCircle / numPoints;
     }
 
-    // Monte Carlo Pi Approximation with threads
-    public static double estimatePiWithThreads(long numPoints, int numThreads) throws InterruptedException, ExecutionException
-    {
-        // TODO: Implement this method to calculate Pi using multiple threads
-
+    public static double estimatePiWithThreads(long numPoints, int numThreads) throws InterruptedException, ExecutionException {
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        long pointsPerThread = numPoints / numThreads;
+        Future<Long>[] results = new Future[numThreads];
 
-        // HINT: You may need to create a variable to *safely* keep track of points that fall inside the circle
-        // HINT: Each thread should generate and process a subset of the total points
+        for (int i = 0; i < numThreads; i++) {
+            results[i] = executor.submit(() -> {
+                Random random = new Random();
+                long inside = 0;
+                for (long j = 0; j < pointsPerThread; j++) {
+                    double x = 2 * random.nextDouble() - 1;
+                    double y = 2 * random.nextDouble() - 1;
+                    if (x * x + y * y <= 1) {
+                        inside++;
+                    }
+                }
+                return inside;
+            });
+        }
 
-        // TODO: After submitting all tasks, shut down the executor to prevent new tasks
-        // TODO: wait for the executor to be fully terminated
-        // TODO: Calculate and return the final estimation of Pi
-        return 0;
+        long totalInside = 0;
+        for (Future<Long> result : results) {
+            totalInside += result.get();
+        }
+
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.MINUTES);
+
+        return 4.0 * totalInside / numPoints;
     }
 }
